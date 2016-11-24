@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require('fs');
 const osenv = require('osenv');
 const Twitter = require('twitter');
