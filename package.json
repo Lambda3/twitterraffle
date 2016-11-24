@@ -1,6 +1,6 @@
 {
   "name": "twitterraffle",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A tool that allows you to run a raffle on twitter, asking the user who won to follow another user.",
   "main": "index.js",
   "scripts": {

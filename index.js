@@ -65,6 +65,8 @@ function getRandomUserId(userIds) {
 }
 
 function getFollower(userIds, previousPromise) {
+    if (userIds.length === 0)
+        return null;
     const randomUserId = getRandomUserId(userIds);
     if (!previousPromise) {
         twitterDebug(`Getting friendship tweets for user id ${randomUserId}...`);
@@ -76,14 +78,25 @@ function getFollower(userIds, previousPromise) {
         userIds.splice(userIds.indexOf('c'), 1);
         twitterDebug(`Getting friendship tweets for user id ${randomUserId}...`);
         return getFollower(userIds, client.getAsync('friendships/show', { source_screen_name: user, target_id: randomUserId }));
+    }).catch(err => {
+        if (err && err[0] && err[0].code === 163) {
+            console.log("User does not exist.");
+            return null;
+        }
+        throw err;
     });
 }
 
 function getUsers(tweets) {
+    console.log("No tweets found.");
     return tweets.map(t => t.user.id_str).filter((userId, index, self) => self.indexOf(userId) === index);
 }
 
 function getUser(userId) {
+    if (!userId) {
+        console.log("No user found.");
+        return null;
+    }
     twitterDebug(`Getting user details for user id ${userId}...`);
     return client.getAsync('users/show', { user_id: userId });
 }
@@ -93,10 +106,10 @@ getTweets()
     .then(userIds => getFollower(userIds))
     .then(userId => getUser(userId))
     .then(user => {
+        if (!user) return;
         const url = `https://twitter.com/${user.screen_name}`;
         console.log(`User is: ${user.screen_name}\nSee in ${url}`);
         open(url);
-
     })
     .catch(err => {
         console.log(`Got error: ${err}`);
