@@ -104,7 +104,8 @@ function getFollower(userIds, previousPromise) {
 }
 
 function getUsers(tweets) {
-    console.log("No tweets found.");
+    if (tweets.length === 0)
+        console.log("No tweets found.");
     return tweets.map(t => t.user.id_str).filter((userId, index, self) => self.indexOf(userId) === index);
 }
 
