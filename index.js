@@ -24,7 +24,23 @@ const query = options['<query>'];
 const user = options['<user>'];
 
 const home = osenv.home();
-const credentials = JSON.parse(fs.readFileSync(path.join(home, '.twitter_credentials.json'), { encoding: 'utf8' }));
+const credentialsFile = path.join(home, '.twitter_credentials.json');
+try {
+    fs.accessSync(credentialsFile, fs.F_OK);
+} catch (e) {
+    console.error(`Could not find the credentials file. It was supposed to be on ${credentialsFile}. Go to https://app.twitter.com and create an app. There you will be able to get the keys and secrets.
+Here is the expected format:
+{
+    "consumer_key": "xxx",
+    "consumer_secret": "xxx",
+    "access_token_key": "xxx",
+    "access_token_secret": "xxx"
+}
+`);
+    process.exit(1);
+}
+const credentials = JSON.parse(fs.readFileSync(credentialsFile, { encoding: 'utf8' }));
+
 const client = Twitter(credentials);
 
 const originalOptions = { q: query, count: 100, result_type: 'recent', include_entities: false };

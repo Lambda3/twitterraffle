@@ -10,6 +10,22 @@ This is a community project, free and open source. Everyone is invited to contri
 npm install -g twitterraffle
 ````
 
+### Create a credentials file
+
+Create a credentials file named `.twitter_credentials.json` inside your home dir:
+
+````javascript
+{
+	"consumer_key": "xxx",
+	"consumer_secret": "xxx",
+	"access_token_key": "xxx",
+	"access_token_secret": "xxx"
+}
+````
+
+To create this file you have to create a twitter application. Go to
+[apps.twitter.com](https://apps.twitter.com/) and do it. It is really simple.
+
 ### Running
 
 ````bash
