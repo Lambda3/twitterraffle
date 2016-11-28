@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --harmony-async-await
 
 const fs = require('fs');
 const osenv = require('osenv');
@@ -18,17 +18,13 @@ Usage:
   twitterraffle -h | --help | --version
 `;
 
-const version = require(path.join(__dirname, 'package.json')).version;
-const options = docopt(doc, { version: version, help: true, exit: true });
-const query = options['<query>'];
-const user = options['<user>'];
-
-const home = osenv.home();
-const credentialsFile = path.join(home, '.twitter_credentials.json');
-try {
-    fs.accessSync(credentialsFile, fs.F_OK);
-} catch (e) {
-    console.error(`Could not find the credentials file. It was supposed to be on ${credentialsFile}. Go to https://app.twitter.com and create an app. There you will be able to get the keys and secrets.
+function getCredentials() {
+    const home = osenv.home();
+    const credentialsFile = path.join(home, '.twitter_credentials.json');
+    try {
+        fs.accessSync(credentialsFile, fs.F_OK);
+    } catch (e) {
+        console.error(`Could not find the credentials file. It was supposed to be on ${credentialsFile}. Go to https://app.twitter.com and create an app. There you will be able to get the keys and secrets.
 Here is the expected format:
 {
     "consumer_key": "xxx",
@@ -37,14 +33,14 @@ Here is the expected format:
     "access_token_secret": "xxx"
 }
 `);
-    process.exit(1);
+        process.exit(1);
+    }
+    const credentials = JSON.parse(fs.readFileSync(credentialsFile, { encoding: 'utf8' }));
+    return credentials;
 }
-const credentials = JSON.parse(fs.readFileSync(credentialsFile, { encoding: 'utf8' }));
-
-const client = Twitter(credentials);
 
 function clone(original, merge) {
-    const clone = { };
+    const clone = {};
     for (const key in original)
         clone[key] = original[key];
     if (merge)
@@ -80,7 +76,7 @@ function getRandomUserId(userIds) {
     return possibleWinnerId;
 }
 
-async function getFollowerAsync(userIds) {
+async function getFollowerAsync(user, userIds) {
     while (userIds.length > 0) {
         try {
             const randomUserId = getRandomUserId(userIds);
@@ -116,10 +112,12 @@ function getUserAsync(userId) {
 }
 
 async function runAsync() {
+    const query = options['<query>'];
+    const userName = options['<user>'];
     try {
         const tweets = await getTweetsAsync(query);
         const userIds = getUsers(tweets);
-        const userId = await getFollowerAsync(userIds);
+        const userId = await getFollowerAsync(userName, userIds);
         const user = await getUserAsync(userId);
         if (!user) process.exit(1);
         const url = `https://twitter.com/${user.screen_name}`;
@@ -130,4 +128,8 @@ async function runAsync() {
     }
 }
 
+const version = require(path.join(__dirname, 'package.json')).version;
+const options = docopt(doc, { version: version, help: true, exit: true });
+const credentials = getCredentials();
+const client = Twitter(credentials);
 runAsync();
