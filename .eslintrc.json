@@ -5,12 +5,13 @@
         "es6": true,
         "node": true
     },
+    "parser": "babel-eslint",
     "parserOptions": {
         "ecmaFeatures": {
             "jsx": false
         },
         "sourceType": "module",
-        "ecmaVersion": 6
+        "ecmaVersion": 7
     },
     "rules": {
         "no-const-assign": "warn",
@@ -32,6 +33,7 @@
         ],
         "prefer-arrow-callback": "error",
         "prefer-const": "error",
-        "prefer-template": "error"
+        "prefer-template": "error",
+        "no-return-await": "error"
     }
 }

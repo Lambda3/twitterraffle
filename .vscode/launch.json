@@ -14,6 +14,9 @@
                 "#nemchama",
                 "giovannibassi"
             ],
+            "runtimeArgs": [
+                "--harmony-async-await"
+            ],
             "env": {
                 "DEBUG": "twitter"
             }

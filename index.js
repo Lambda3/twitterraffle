@@ -43,7 +43,6 @@ const credentials = JSON.parse(fs.readFileSync(credentialsFile, { encoding: 'utf
 
 const client = Twitter(credentials);
 
-const originalOptions = { q: query, count: 100, result_type: 'recent', include_entities: false };
 function clone(original, merge) {
     const clone = { };
     for (const key in original)
@@ -54,24 +53,25 @@ function clone(original, merge) {
     return clone;
 }
 
-var tweetPage = 0;
-function getTweets(statuses, previousPromise) {
-    tweetPage++;
-    if (!statuses) {
-        twitterDebug('Getting first tweets...');
-        return getTweets([], client.getAsync('search/tweets', originalOptions));
-    }
-    return previousPromise.then(tweets => {
-        const newStatuses = statuses.concat(tweets.statuses);
-        if (!tweets.search_metadata.next_results || tweetPage > (maxNumberOfTwittsSearched / 100))
-            return newStatuses;
+async function getTweetsAsync(query) {
+    var tweetPage = 0;
+    twitterDebug('Getting first tweets...');
+    var newStatuses = [];
+    const originalOptions = { q: query, count: 100, result_type: 'recent', include_entities: false };
+    var optionsForNextRequest = originalOptions;
+    while (tweetPage < (maxNumberOfTwittsSearched / 100)) {
+        tweetPage++;
+        const tweets = await client.getAsync('search/tweets', optionsForNextRequest);
+        newStatuses = newStatuses.concat(tweets.statuses);
+        if (!tweets.search_metadata.next_results)
+            break;
         let nextResultsQueryString = tweets.search_metadata.next_results;
         nextResultsQueryString = nextResultsQueryString.substring(0, 1) === '?' ? nextResultsQueryString.substring(1) : nextResultsQueryString;
         const nextResultQuery = querystring.parse(nextResultsQueryString);
-        const optionsForNextRequest = clone(originalOptions, { max_id: nextResultQuery.max_id });
+        optionsForNextRequest = clone(originalOptions, { max_id: nextResultQuery.max_id });
         twitterDebug(`Getting more tweets (page ${tweetPage})...`);
-        return getTweets(newStatuses, client.getAsync('search/tweets', optionsForNextRequest));
-    });
+    }
+    return newStatuses;
 }
 
 function getRandomUserId(userIds) {
@@ -80,27 +80,24 @@ function getRandomUserId(userIds) {
     return possibleWinnerId;
 }
 
-function getFollower(userIds, previousPromise) {
-    if (userIds.length === 0)
-        return null;
-    const randomUserId = getRandomUserId(userIds);
-    if (!previousPromise) {
-        twitterDebug(`Getting friendship tweets for user id ${randomUserId}...`);
-        return getFollower(userIds, client.getAsync('friendships/show', { source_screen_name: user, target_id: randomUserId }));
-    }
-    return previousPromise.then(r => {
-        if (r.relationship.target.following)
-            return r.relationship.target.id_str;
-        userIds.splice(userIds.indexOf('c'), 1);
-        twitterDebug(`Getting friendship tweets for user id ${randomUserId}...`);
-        return getFollower(userIds, client.getAsync('friendships/show', { source_screen_name: user, target_id: randomUserId }));
-    }).catch(err => {
-        if (err && err[0] && err[0].code === 163) {
-            console.log("User does not exist.");
-            return null;
+async function getFollowerAsync(userIds) {
+    while (userIds.length > 0) {
+        try {
+            const randomUserId = getRandomUserId(userIds);
+            twitterDebug(`Getting friendship tweets for user id ${randomUserId}...`);
+            const r = await client.getAsync('friendships/show', { source_screen_name: user, target_id: randomUserId });
+            if (r.relationship.target.following)
+                return r.relationship.target.id_str;
+            userIds.splice(userIds.indexOf(r.relationship.target.id_str), 1);
+        } catch (err) {
+            if (err && err[0] && err[0].code === 163) {
+                console.log("User does not exist.");
+                return null;
+            }
+            throw err;
         }
-        throw err;
-    });
+    }
+    return null;
 }
 
 function getUsers(tweets) {
@@ -109,7 +106,7 @@ function getUsers(tweets) {
     return tweets.map(t => t.user.id_str).filter((userId, index, self) => self.indexOf(userId) === index);
 }
 
-function getUser(userId) {
+function getUserAsync(userId) {
     if (!userId) {
         console.log("No user found.");
         return null;
@@ -118,16 +115,19 @@ function getUser(userId) {
     return client.getAsync('users/show', { user_id: userId });
 }
 
-getTweets()
-    .then(tweets => getUsers(tweets))
-    .then(userIds => getFollower(userIds))
-    .then(userId => getUser(userId))
-    .then(user => {
-        if (!user) return;
+async function runAsync() {
+    try {
+        const tweets = await getTweetsAsync(query);
+        const userIds = getUsers(tweets);
+        const userId = await getFollowerAsync(userIds);
+        const user = await getUserAsync(userId);
+        if (!user) process.exit(1);
         const url = `https://twitter.com/${user.screen_name}`;
         console.log(`User is: ${user.screen_name}\nSee in ${url}`);
         open(url);
-    })
-    .catch(err => {
+    } catch (err) {
         console.log(`Got error: ${err}`);
-    });
+    }
+}
+
+runAsync();
