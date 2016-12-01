@@ -58,6 +58,7 @@ async function getTweetsAsync(query) {
     while (tweetPage < (maxNumberOfTwittsSearched / 100)) {
         tweetPage++;
         const tweets = await client.getAsync('search/tweets', optionsForNextRequest);
+        twitterDebug(`Got ${tweets.statuses.length} tweets.`);
         newStatuses = newStatuses.concat(tweets.statuses);
         if (!tweets.search_metadata.next_results)
             break;
